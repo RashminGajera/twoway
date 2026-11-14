@@ -241,15 +241,19 @@ async function startCaller() {
     const connection = createPeer();
     renderRoomInvite(roomId);
     signalSocket = new WebSocket(`${signalingUrl}/room/${roomId}`);
-    signalSocket.addEventListener("open", async () => {
+    let offerSent = false;
+    const sendOffer = async () => {
+      if (offerSent) return;
+      offerSent = true;
       const offer = await connection.createOffer();
       await connection.setLocalDescription(offer);
       await waitForIce(connection);
       signalSocket?.send(JSON.stringify({ type: "offer", sdp: connection.localDescription?.sdp }));
       setConnectionNote("Waiting for the other person to join…");
-    });
+    };
     signalSocket.addEventListener("message", (event: MessageEvent<string>) => {
       const message = JSON.parse(event.data) as { type?: string; sdp?: string };
+      if (message.type === "peer-ready") void sendOffer();
       if (message.type === "answer" && message.sdp && peer?.signalingState === "have-local-offer") {
         void peer.setRemoteDescription({ type: "answer", sdp: message.sdp });
       }

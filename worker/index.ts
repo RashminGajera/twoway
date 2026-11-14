@@ -13,6 +13,10 @@ export class Room {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
     this.state.acceptWebSocket(server);
+    const sockets = this.state.getWebSockets();
+    if (sockets.length === 2) {
+      for (const socket of sockets) socket.send(JSON.stringify({ type: "peer-ready" }));
+    }
     return new Response(null, { status: 101, webSocket: client });
   }
 
