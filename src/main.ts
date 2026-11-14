@@ -274,8 +274,8 @@ async function createAnswer() {
       <p class="signal-instruction">Copy this code and send it back to the caller. Keep this page open while they connect.</p>
       <textarea class="signal-box compact-signal" id="outgoing-signal" readonly aria-label="Your call answer">${signalText({ type: "answer", sdp: connection.localDescription?.sdp ?? "" })}</textarea>
       <button class="primary-button wide" id="copy-invite">Copy answer <span class="button-arrow">↗</span></button>
+      <p class="waiting-note"><span class="pulse"></span> Waiting for Person A to connect…</p>
     `;
-    showCall();
   } catch (error) {
     showError(error instanceof Error ? error.message : "Could not create an answer.");
   }
