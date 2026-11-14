@@ -100,6 +100,7 @@ const cameraButton = document.querySelector<HTMLButtonElement>("#toggle-camera")
 
 let peer: RTCPeerConnection | null = null;
 let localStream: MediaStream | null = null;
+let applyingAnswer = false;
 
 const setVisible = (element: HTMLElement, visible: boolean) => element.classList.toggle("hidden", !visible);
 
@@ -249,12 +250,27 @@ signalContent.addEventListener("click", (event) => {
 });
 
 async function connectCaller() {
+  const connectButton = document.querySelector<HTMLButtonElement>("#connect-answer");
+  if (applyingAnswer) return;
   try {
     const input = document.querySelector<HTMLTextAreaElement>("#incoming-answer");
     if (!input?.value.trim() || !peer) throw new Error("Paste the other person's answer first.");
+    if (peer.signalingState !== "have-local-offer") {
+      throw new Error("This answer was already submitted. Start a new call to connect again.");
+    }
+    applyingAnswer = true;
+    if (connectButton) {
+      connectButton.disabled = true;
+      connectButton.innerHTML = "Answer sent ✓";
+    }
     await peer.setRemoteDescription(parseSignal(input.value));
   } catch (error) {
     showError(error instanceof Error ? error.message : "Could not connect the call.");
+    applyingAnswer = false;
+    if (connectButton) {
+      connectButton.disabled = false;
+      connectButton.innerHTML = 'Connect securely <span>→</span>';
+    }
   }
 }
 
