@@ -119,7 +119,10 @@ function createPeer(): RTCPeerConnection {
     waiting.classList.add("hidden");
   };
   connection.onconnectionstatechange = () => {
-    if (connection.connectionState === "connected") callStatus.textContent = "Connected securely";
+    if (connection.connectionState === "connected") {
+      callStatus.textContent = "Connected securely";
+      showCall();
+    }
     if (connection.connectionState === "disconnected") callStatus.textContent = "Connection interrupted";
     if (connection.connectionState === "failed") callStatus.textContent = "Connection failed";
   };
@@ -250,7 +253,6 @@ async function connectCaller() {
     const input = document.querySelector<HTMLTextAreaElement>("#incoming-answer");
     if (!input?.value.trim() || !peer) throw new Error("Paste the other person's answer first.");
     await peer.setRemoteDescription(parseSignal(input.value));
-    showCall();
   } catch (error) {
     showError(error instanceof Error ? error.message : "Could not connect the call.");
   }
