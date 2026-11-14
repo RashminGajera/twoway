@@ -101,6 +101,7 @@ const cameraButton = document.querySelector<HTMLButtonElement>("#toggle-camera")
 let peer: RTCPeerConnection | null = null;
 let localStream: MediaStream | null = null;
 let applyingAnswer = false;
+let signalSocket: WebSocket | null = null;
 
 const setVisible = (element: HTMLElement, visible: boolean) => element.classList.toggle("hidden", !visible);
 
@@ -233,12 +234,26 @@ function showError(message: string) {
 async function startCaller() {
   try {
     createButton.disabled = true;
+    const signalingUrl = import.meta.env.VITE_SIGNALING_URL?.trim().replace(/\/$/, "");
+    if (!signalingUrl) throw new Error("Signaling is not configured. Add VITE_SIGNALING_URL in Cloudflare Pages.");
     localStream = await getMedia();
+    const roomId = crypto.randomUUID().replaceAll("-", "").slice(0, 10);
     const connection = createPeer();
-    const offer = await connection.createOffer();
-    await connection.setLocalDescription(offer);
-    await waitForIce(connection);
-    renderSignalStep("offer", signalText({ type: "offer", sdp: connection.localDescription?.sdp ?? "" }));
+    renderRoomInvite(roomId);
+    signalSocket = new WebSocket(`${signalingUrl}/room/${roomId}`);
+    signalSocket.addEventListener("open", async () => {
+      const offer = await connection.createOffer();
+      await connection.setLocalDescription(offer);
+      await waitForIce(connection);
+      signalSocket?.send(JSON.stringify({ type: "offer", sdp: connection.localDescription?.sdp }));
+      setConnectionNote("Waiting for the other person to join…");
+    });
+    signalSocket.addEventListener("message", (event: MessageEvent<string>) => {
+      const message = JSON.parse(event.data) as { type?: string; sdp?: string };
+      if (message.type === "answer" && message.sdp && peer?.signalingState === "have-local-offer") {
+        void peer.setRemoteDescription({ type: "answer", sdp: message.sdp });
+      }
+    });
   } catch (error) {
     showError(error instanceof Error ? error.message : "Could not access your camera and microphone.");
   } finally {
@@ -249,8 +264,7 @@ async function startCaller() {
 async function startJoiner() {
   try {
     showJoinButton.disabled = true;
-    renderSignalStep("answer");
-    localStream = await getMedia();
+    renderRoomJoin(new URLSearchParams(window.location.search).get("room") ?? "");
   } catch (error) {
     showError(error instanceof Error ? error.message : "Could not access your camera and microphone.");
   } finally {
@@ -258,9 +272,73 @@ async function startJoiner() {
   }
 }
 
+function renderRoomInvite(roomId: string) {
+  const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+  setVisible(signalView, true);
+  signalLabel.textContent = "Share call link";
+  signalContent.innerHTML = `
+    <h2>Share this private link</h2>
+    <p class="signal-instruction">Send this link to one person. Offer and answer exchange automatically.</p>
+    <textarea class="signal-box compact-signal" id="room-link" readonly aria-label="Private call link">${inviteUrl}</textarea>
+    <button class="primary-button wide" id="copy-room-link">Copy call link <span class="button-arrow">↗</span></button>
+    <p class="waiting-note"><span class="pulse"></span><span id="connection-note">Waiting for the other person to join…</span></p>
+  `;
+}
+
+function renderRoomJoin(roomId: string) {
+  setVisible(signalView, true);
+  signalLabel.textContent = "Join call";
+  signalContent.innerHTML = `
+    <h2>Join a private call</h2>
+    <p class="signal-instruction">Paste the call link from the other person. The offer and answer will exchange automatically.</p>
+    <input class="room-input" id="room-input" value="${roomId}" placeholder="Paste call link or room code" aria-label="Call link or room code" />
+    <button class="primary-button wide" id="join-room">Join call <span class="button-arrow">↗</span></button>
+    <p class="waiting-note"><span class="pulse"></span><span id="connection-note">Your camera and microphone will start after you join.</span></p>
+  `;
+}
+
+function getRoomId(value: string): string {
+  try {
+    const url = new URL(value.trim());
+    return url.searchParams.get("room") ?? "";
+  } catch {
+    return value.trim().replace(/[^a-zA-Z0-9]/g, "").slice(0, 10);
+  }
+}
+
+async function joinRoom() {
+  const input = document.querySelector<HTMLInputElement>("#room-input");
+  const roomId = input ? getRoomId(input.value) : "";
+  const signalingUrl = import.meta.env.VITE_SIGNALING_URL?.trim().replace(/\/$/, "");
+  if (!roomId) return showError("Paste the call link first.");
+  if (!signalingUrl) return showError("Signaling is not configured. Add VITE_SIGNALING_URL in Cloudflare Pages.");
+  try {
+    const joinButton = document.querySelector<HTMLButtonElement>("#join-room");
+    if (joinButton) joinButton.disabled = true;
+    localStream = await getMedia();
+    const connection = createPeer();
+    signalSocket = new WebSocket(`${signalingUrl}/room/${roomId}`);
+    signalSocket.addEventListener("message", (event: MessageEvent<string>) => {
+      const message = JSON.parse(event.data) as { type?: string; sdp?: string };
+      if (message.type !== "offer" || !message.sdp) return;
+      void (async () => {
+        await connection.setRemoteDescription({ type: "offer", sdp: message.sdp });
+        const answer = await connection.createAnswer();
+        await connection.setLocalDescription(answer);
+        await waitForIce(connection);
+        signalSocket?.send(JSON.stringify({ type: "answer", sdp: connection.localDescription?.sdp }));
+        setConnectionNote("Answer sent. Connecting securely…");
+      })().catch((error: unknown) => showError(error instanceof Error ? error.message : "Could not join the call."));
+    });
+  } catch (error) {
+    showError(error instanceof Error ? error.message : "Could not join the call.");
+  }
+}
+
 createButton.addEventListener("click", () => void startCaller());
 showJoinButton.addEventListener("click", () => void startJoiner());
 backButton.addEventListener("click", () => {
+  signalSocket?.close();
   peer?.close();
   localStream?.getTracks().forEach((track) => track.stop());
   peer = null;
@@ -277,6 +355,14 @@ signalContent.addEventListener("click", (event) => {
       target.closest("button")!.textContent = "Copied ✓";
     }
   }
+  if (target.closest("#copy-room-link")) {
+    const output = document.querySelector<HTMLTextAreaElement>("#room-link");
+    if (output) {
+      void navigator.clipboard.writeText(output.value);
+      target.closest("button")!.textContent = "Copied ✓";
+    }
+  }
+  if (target.closest("#join-room")) void joinRoom();
   if (target.closest("#connect-answer")) void connectCaller();
   if (target.closest("#create-answer")) void createAnswer();
 });
@@ -331,6 +417,7 @@ async function createAnswer() {
 }
 
 function endCall() {
+  signalSocket?.close();
   peer?.close();
   localStream?.getTracks().forEach((track) => track.stop());
   peer = null;

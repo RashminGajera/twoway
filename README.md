@@ -33,6 +33,17 @@ VITE_TURN_CREDENTIAL=your-password
 
 Copy `.env.example` to `.env` for local development. In Cloudflare Pages, add the same variables under **Settings → Environment variables** and redeploy. Put the comma-separated TURN URLs into `VITE_TURN_URLS`. These values are delivered to the browser, so use short-lived TURN credentials when possible; they are not application secrets. Never put a long-lived Cloudflare TURN API token in these variables.
 
+## Automatic signaling with Cloudflare
+
+The app includes a small Cloudflare Worker and Durable Object that exchanges the WebRTC offer and answer through a single room link. Deploy it separately from the Pages site:
+
+```bash
+npx wrangler login
+npx wrangler deploy
+```
+
+Set `VITE_SIGNALING_URL` in the Pages project to the deployed Worker URL, for example `https://twoway-signaling.<your-subdomain>.workers.dev`, then redeploy Pages. The Worker does not store video or audio; it only relays short-lived signaling messages between the two browsers.
+
 ### Free or self-hosted options
 
 - A TURN provider may offer a limited free quota. This is the easiest option, but relay bandwidth is metered.

@@ -50,6 +50,8 @@ footer { display: flex; justify-content: space-between; color: #a2aaa4; font: 10
 .compact-signal { min-height: 72px; max-height: 110px; }
 .waiting-note { display: flex; align-items: center; gap: 9px; margin: 18px 0 0; color: #8b958d; font: 11px "DM Mono", monospace; }
 .signal-box:focus { outline: 2px solid #d3f35b; border-color: #afcc51; }
+.room-input { display: block; width: 100%; margin-top: 20px; padding: 14px 15px; color: #68736c; background: #f7f9f3; border: 1px solid #e3e9d9; border-radius: 8px; font: 12px "DM Mono", monospace; }
+.room-input:focus { outline: 2px solid #d3f35b; border-color: #afcc51; }
 .answer-box { min-height: 112px; }
 .wide { min-width: 190px; }
 .next-step { display: flex; gap: 14px; align-items: center; margin: 27px 0 10px; padding: 13px 15px; background: #fbfcf9; border-radius: 8px; }
