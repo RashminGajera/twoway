@@ -112,8 +112,15 @@ async function getMedia(): Promise<MediaStream> {
 }
 
 function createPeer(): RTCPeerConnection {
+  const iceServers: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
+  const turnUrl = import.meta.env.VITE_TURN_URL?.trim();
+  const turnUsername = import.meta.env.VITE_TURN_USERNAME?.trim();
+  const turnCredential = import.meta.env.VITE_TURN_CREDENTIAL?.trim();
+  if (turnUrl && turnUsername && turnCredential) {
+    iceServers.push({ urls: turnUrl, username: turnUsername, credential: turnCredential });
+  }
   const connection = new RTCPeerConnection({
-    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+    iceServers
   });
   connection.ontrack = (event) => {
     remoteVideo.srcObject = event.streams[0];
