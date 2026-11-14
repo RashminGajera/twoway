@@ -26,12 +26,12 @@ For production, serve the site over HTTPS and consider replacing the public STUN
 STUN is free but cannot connect every pair of networks. Add a TURN relay for reliable calls across restrictive Wi-Fi, VPNs, and mobile networks. The app reads these build-time environment variables:
 
 ```bash
-VITE_TURN_URL=turn:your-turn-host:3478
+VITE_TURN_URLS=turn:your-turn-host:3478
 VITE_TURN_USERNAME=your-username
 VITE_TURN_CREDENTIAL=your-password
 ```
 
-Copy `.env.example` to `.env` for local development. In Cloudflare Pages, add the same variables under **Settings → Environment variables** and redeploy. These values are delivered to the browser, so use short-lived TURN credentials when possible; they are not application secrets.
+Copy `.env.example` to `.env` for local development. In Cloudflare Pages, add the same variables under **Settings → Environment variables** and redeploy. Put the comma-separated TURN URLs into `VITE_TURN_URLS`. These values are delivered to the browser, so use short-lived TURN credentials when possible; they are not application secrets. Never put a long-lived Cloudflare TURN API token in these variables.
 
 ### Free or self-hosted options
 
