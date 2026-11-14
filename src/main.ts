@@ -117,11 +117,11 @@ function createPeer(): RTCPeerConnection {
   connection.ontrack = (event) => {
     remoteVideo.srcObject = event.streams[0];
     waiting.classList.add("hidden");
-    showCall();
   };
   connection.onconnectionstatechange = () => {
     if (connection.connectionState === "connected") {
       callStatus.textContent = "Connected securely";
+      showCall();
     }
     if (connection.connectionState === "disconnected") callStatus.textContent = "Connection interrupted";
     if (connection.connectionState === "failed") callStatus.textContent = "Connection failed";
