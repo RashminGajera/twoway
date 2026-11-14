@@ -117,11 +117,11 @@ function createPeer(): RTCPeerConnection {
   connection.ontrack = (event) => {
     remoteVideo.srcObject = event.streams[0];
     waiting.classList.add("hidden");
+    showCall();
   };
   connection.onconnectionstatechange = () => {
     if (connection.connectionState === "connected") {
       callStatus.textContent = "Connected securely";
-      showCall();
     }
     if (connection.connectionState === "disconnected") callStatus.textContent = "Connection interrupted";
     if (connection.connectionState === "failed") callStatus.textContent = "Connection failed";
@@ -267,14 +267,14 @@ async function createAnswer() {
     const answer = await connection.createAnswer();
     await connection.setLocalDescription(answer);
     await waitForIce(connection);
-    renderSignalStep("offer", signalText({ type: "answer", sdp: connection.localDescription?.sdp ?? "" }));
+    setVisible(signalView, true);
     signalLabel.textContent = "Send your answer";
-    const heading = signalContent.querySelector("h2");
-    if (heading) heading.textContent = "Send your answer";
-    const instruction = signalContent.querySelector(".signal-instruction");
-    if (instruction) instruction.textContent = "Copy this answer and send it back to the caller. Your call will begin when they paste it.";
-    document.querySelector<HTMLTextAreaElement>("#incoming-answer")?.remove();
-    document.querySelector<HTMLButtonElement>("#connect-answer")?.remove();
+    signalContent.innerHTML = `
+      <h2>Send your answer</h2>
+      <p class="signal-instruction">Copy this code and send it back to the caller. Keep this page open while they connect.</p>
+      <textarea class="signal-box compact-signal" id="outgoing-signal" readonly aria-label="Your call answer">${signalText({ type: "answer", sdp: connection.localDescription?.sdp ?? "" })}</textarea>
+      <button class="primary-button wide" id="copy-invite">Copy answer <span class="button-arrow">↗</span></button>
+    `;
     showCall();
   } catch (error) {
     showError(error instanceof Error ? error.message : "Could not create an answer.");
