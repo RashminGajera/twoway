@@ -127,6 +127,20 @@ function createPeer(): RTCPeerConnection {
     if (connection.connectionState === "disconnected") callStatus.textContent = "Connection interrupted";
     if (connection.connectionState === "failed") callStatus.textContent = "Connection failed";
   };
+  connection.oniceconnectionstatechange = () => {
+    if (connection.iceConnectionState === "checking") {
+      setConnectionNote("Connecting directly to the other person…");
+    }
+    if (connection.iceConnectionState === "connected" || connection.iceConnectionState === "completed") {
+      setConnectionNote("Secure connection found.");
+    }
+    if (connection.iceConnectionState === "failed") {
+      setConnectionNote("Connection blocked by one of the networks. Both people may need to try another network.");
+    }
+    if (connection.iceConnectionState === "disconnected") {
+      setConnectionNote("Connection interrupted. Waiting for the network…");
+    }
+  };
   if (localStream) localStream.getTracks().forEach((track) => connection.addTrack(track, localStream!));
   peer = connection;
   return connection;
@@ -168,6 +182,11 @@ function showCall() {
   setVisible(callView, true);
   document.body.classList.add("in-call");
   localVideo.srcObject = localStream;
+}
+
+function setConnectionNote(message: string) {
+  const note = document.querySelector<HTMLParagraphElement>("#connection-note");
+  if (note) note.textContent = message;
 }
 
 function renderSignalStep(mode: "offer" | "answer", invite = "") {
@@ -291,7 +310,7 @@ async function createAnswer() {
       <p class="signal-instruction">Copy this code and send it back to the caller. Keep this page open while they connect.</p>
       <textarea class="signal-box compact-signal" id="outgoing-signal" readonly aria-label="Your call answer">${signalText({ type: "answer", sdp: connection.localDescription?.sdp ?? "" })}</textarea>
       <button class="primary-button wide" id="copy-invite">Copy answer <span class="button-arrow">↗</span></button>
-      <p class="waiting-note"><span class="pulse"></span> Waiting for Person A to connect…</p>
+      <p class="waiting-note"><span class="pulse"></span><span id="connection-note">Waiting for Person A to connect…</span></p>
     `;
   } catch (error) {
     showError(error instanceof Error ? error.message : "Could not create an answer.");
