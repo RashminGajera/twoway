@@ -43,7 +43,7 @@ app.innerHTML = `
           <div class="step-number">02</div>
           <h2>Join a call</h2>
           <p>Paste the invite from the other person. Your browser will connect directly to theirs.</p>
-          <button class="secondary-button" id="show-join">Join with invite <span>→</span></button>
+          <button class="secondary-button" id="show-join">Join a call <span>→</span></button>
         </div>
       </div>
 
@@ -184,7 +184,7 @@ function renderSignalStep(mode: "offer" | "answer", invite = "") {
     <h2>Paste your invite</h2>
     <p class="signal-instruction">Ask the caller to send you their invite, then paste it below. It is only used to establish this connection.</p>
     <textarea class="signal-box answer-box" id="incoming-offer" placeholder="Paste the caller's invite here" aria-label="Invite from the caller"></textarea>
-    <button class="primary-button wide" id="create-answer">Join call <span class="button-arrow">↗</span></button>
+    <button class="primary-button wide" id="create-answer">Generate my answer <span class="button-arrow">↗</span></button>
   `;
 }
 
@@ -216,8 +216,8 @@ async function startCaller() {
 async function startJoiner() {
   try {
     showJoinButton.disabled = true;
-    localStream = await getMedia();
     renderSignalStep("answer");
+    localStream = await getMedia();
   } catch (error) {
     showError(error instanceof Error ? error.message : "Could not access your camera and microphone.");
   } finally {
@@ -262,6 +262,7 @@ async function createAnswer() {
   try {
     const input = document.querySelector<HTMLTextAreaElement>("#incoming-offer");
     if (!input?.value.trim()) throw new Error("Paste the caller's invite first.");
+    if (!localStream) localStream = await getMedia();
     const connection = createPeer();
     await connection.setRemoteDescription(parseSignal(input.value));
     const answer = await connection.createAnswer();
