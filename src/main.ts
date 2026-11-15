@@ -240,7 +240,7 @@ async function startCaller() {
     const roomId = crypto.randomUUID().replaceAll("-", "").slice(0, 10);
     const connection = createPeer();
     renderRoomInvite(roomId);
-    signalSocket = new WebSocket(`${signalingUrl}/room/${roomId}`);
+    signalSocket = new WebSocket(getSignalingSocketUrl(signalingUrl, roomId));
     let offerSent = false;
     const sendOffer = async () => {
       if (offerSent) return;
@@ -310,6 +310,13 @@ function getRoomId(value: string): string {
   }
 }
 
+function getSignalingSocketUrl(baseUrl: string, roomId: string): string {
+  const url = new URL(baseUrl);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.pathname = `${url.pathname.replace(/\/$/, "")}/room/${roomId}`;
+  return url.toString();
+}
+
 async function joinRoom() {
   const input = document.querySelector<HTMLInputElement>("#room-input");
   const roomId = input ? getRoomId(input.value) : "";
@@ -321,7 +328,7 @@ async function joinRoom() {
     if (joinButton) joinButton.disabled = true;
     localStream = await getMedia();
     const connection = createPeer();
-    signalSocket = new WebSocket(`${signalingUrl}/room/${roomId}`);
+    signalSocket = new WebSocket(getSignalingSocketUrl(signalingUrl, roomId));
     signalSocket.addEventListener("message", (event: MessageEvent<string>) => {
       const message = JSON.parse(event.data) as { type?: string; sdp?: string };
       if (message.type !== "offer" || !message.sdp) return;

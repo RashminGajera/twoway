@@ -34,6 +34,9 @@ export class Room {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname === "/") {
+      return new Response("TwoWay signaling server is running.", { status: 200 });
+    }
     const match = url.pathname.match(/^\/room\/([a-zA-Z0-9]{6,32})$/);
     if (!match) return new Response("Room not found", { status: 404 });
 
